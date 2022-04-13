@@ -14,11 +14,18 @@ import numpy as np
 import os
 from skimage import color
 from skimage import io
+import gspread
 
-img_size = 16
+img_size = 8
+
+# Spreadsheet variables
+sa = gspread.service_account(filename="scouting-ocr.json")  # Name of json file
+sh = sa.open("Testing Python")  # Name of spreadsheet
+wks = sh.worksheet("Sheet1")  # Name of specific sheet on spreadsheet
 
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-img = os.path.join(THIS_FOLDER, 'oneNN.jpg')
+img = os.path.join(THIS_FOLDER, 'oneNN.png')
+
 
 imgopen = Image.open(img, mode="r").convert('L')
 #imgopen.show()
@@ -55,15 +62,15 @@ plt.imshow(np_img.reshape(img_size, img_size))
 #plt.show()
 
 for i in range(len(np_img)):
-    for w in range(len(np_img)): 
+    for w in range(len(np_img)):
         #print(np_img[i, w])
         np_img[i, w] = 255 - np_img[i, w]
-        
+
 np_arr_1d = np.empty(shape=[1, img_size**2])
 
 for i in range(len(np_img)):
     for w in range(len(np_img)):
-       
+
         np.append(np_arr_1d, (float(np_img[i, w])))
 
 #small_img.show()
@@ -87,6 +94,8 @@ for j in range(len(incorrect)):
 print(np_img.reshape(1, img_size**2))
 plt.xticks(())
 plt.yticks(())
-     
+
 print(mlp.predict(np_img.reshape(1, img_size**2)))
+final_num = int(mlp.predict(np_img.reshape(1, img_size**2)))
+wks.update("A1", final_num)
 
