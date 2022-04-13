@@ -15,18 +15,24 @@ import os
 from skimage import color
 from skimage import io
 
+img_size = 16
 
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-img = os.path.join(THIS_FOLDER, 'oneNNCompresses.jpg')
+img = os.path.join(THIS_FOLDER, 'oneNN.jpg')
 
 imgopen = Image.open(img, mode="r").convert('L')
 #imgopen.show()
+img2 = os.path.join(THIS_FOLDER, 'file.jpg')
 
-small_img1 = imgopen.resize((8, 8))
+imgopen.save(img2)
 
-small_img2 = small_img1.resize((8, 8))
+imgopen2 = Image.open(img2, mode="r").convert('L')
 
-np_img = np.asarray(small_img2) 
+
+small_img1 = imgopen2.resize((img_size, img_size))
+small_img1.show()
+
+np_img = np.asarray(small_img1)
 
 
 #read_image = io.imread(img)
@@ -44,7 +50,7 @@ incorrect = X_test[y_pred != y_test]
 incorrect_true = y_test[y_pred != y_test]
 incorrect_pred = y_pred[y_pred != y_test]
 
-plt.imshow(imgopen)
+plt.imshow(np_img.reshape(img_size, img_size))
 
 #plt.show()
 
@@ -53,14 +59,13 @@ for i in range(len(np_img)):
         #print(np_img[i, w])
         np_img[i, w] = 255 - np_img[i, w]
         
-np_arr_1d = np.empty(shape=[1, 64])
+np_arr_1d = np.empty(shape=[1, img_size**2])
 
 for i in range(len(np_img)):
     for w in range(len(np_img)):
        
         np.append(np_arr_1d, (float(np_img[i, w])))
 
-print(small_img2)
 #small_img.show()
 
 
@@ -79,9 +84,9 @@ for j in range(len(incorrect)):
 """
 
 #print(mlp.score(X_test, y_test))
-print(np_img.reshape(1, 64))
+print(np_img.reshape(1, img_size**2))
 plt.xticks(())
 plt.yticks(())
      
-print(mlp.predict(np_img.reshape(1, 64)))
+print(mlp.predict(np_img.reshape(1, img_size**2)))
 
