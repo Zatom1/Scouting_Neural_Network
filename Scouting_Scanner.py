@@ -68,12 +68,10 @@ def img_to_arr(name, return_bool):
     small_img1 = imgopen2.resize((img_size, img_size))
 
     np_img = np.asarray(small_img1)
-    
     for i in range(len(np_img)):
         for w in range(len(np_img)): 
             #print(np_img[i, w])
             np_img[i, w] = 255 - np_img[i, w]
-            
     np_arr_1d = np.empty(shape=[1, img_size**2])
 
     for i in range(len(np_img)):
@@ -92,7 +90,6 @@ def img_to_arr(name, return_bool):
         return predicted_img
     else:
         return disp
-
 
 def find_sheet(name, return_arr):
     THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
@@ -117,11 +114,8 @@ def find_sheet(name, return_arr):
         return imgopen2
     else:
         return np.asarray(imgopen2)
-    
-def plot_sheet(img):
-    plt.imshow(img)
 
-def cut_top(img_name):
+def cut_top_black(img_name):
     img_arr = find_sheet(img_name, True)
     base = None
     sum_arr = None
@@ -176,35 +170,6 @@ def cut_top_white(img_arr):
     plt.imshow(img_arr)
     return img_arr
 
-def cut_lefta(img_name):
-    img_arr = find_sheet(img_name, True)
-    base = None
-    sum_arr = None
-    try:
-        for i in range(50):
-            if img_arr[i].sum()/1120 < 200:
-                base = i
-                sum_arr = img_arr[i].sum()/1120
-                
-                for i in range(base):
-                    #for w in 
-                    img_arr = np.delete(img_arr, (0, 0), axis=1)
-                    
-                break
-            elif i == 49:
-                raise ScanNotStraight
-                
-    except ScanNotStraight:
-        print("The scan is not straight enough to be read by the program")
-    finally:
-        if sum_arr == None:
-            print("I have no idea how you even got here. Data analyst moment")
-    #print(img_arr[0].sum()/1691)
-    #print(img_arr) 
-    plt.imshow(img_arr)
-    return img_arr
-
-
 def cut_left_real(img_arr):
     #img_arr = find_sheet(img_name, True)
     base = None
@@ -225,10 +190,6 @@ def cut_left_real(img_arr):
     print(base)
     plt.imshow(img_arr)
     return img_arr
-
-#def crop_left(img_arr):
-    
-
 
 def straighten(cut):
     split_left = None
@@ -254,7 +215,7 @@ def straighten(cut):
     return cut
 
 def align_img(img_name):
-    cut_top_img = cut_top(img_name + '.jpg')
+    cut_top_img = cut_top_black(img_name + '.jpg')
 
     cut_top_white_img = cut_top_white(cut_top_img)
     
@@ -316,12 +277,30 @@ for j in range(len(incorrect)):
 
 sheet = find_sheet('4786-64.jpg', False)
 
-sheet.show()
+sheet.show() 
 
-def  find_num(img_name, x, y, w, h):
+def enhance(img_arr):
+    
+    for i in range(img_size):
+        for w in range(img_size):
+            if img_arr[i, w] > 60:
+                img_arr[i, w] = 0
+            else: 
+                img_arr[i, w] = 255
+    print(img_arr)
+    return img_arr
+
+
+            
+def find_num(img_name, x, y, w, h):
     num_crop = img_crop(sheet, x, y, w, h)
     num_crop.save(img_name + '.jpg')
-    num_arr = img_to_arr(img_name + '.jpg', True)
+
+    num_arr = img_to_arr(img_name + '.jpg', False)
+    enhance(num_arr)
+    image = Image.fromarray(num_arr)
+    image.save(img_name + '.jpg')
+    
     prediction = predict(img_name)
     print(prediction)
     return prediction
@@ -368,9 +347,15 @@ for j in range(len(incorrect)):
     print("predicted value:", incorrect_pred[j])
 """
 
-num_high = find_num('num_high', 920, 1010, 212, 155)
+num_high_left = find_num('num_high', 938, 1034, 80, 70)
 
-#num_low = find_num('num_low', 610, 640, 112, 55)
+num_high_right = find_num('num_high', 938+80, 1034, 80, 70)
+
+total_high = (int(num_high_left[0])*10) + int(num_high_right[0])
+
+print(total_high)
+
+#num_low = find_num('num_low', 1115, 1034, 160, 70)
 
 #num_missed = find_num('num_missed', 740, 650, 110, 45)
 
