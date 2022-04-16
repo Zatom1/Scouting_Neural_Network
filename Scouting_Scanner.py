@@ -4,7 +4,6 @@ Created on Tue Apr 12 15:40:11 2022
 
 @author: zidda
 """
-from PIL import Image
 #from sklearn.datasets import load_digits
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
@@ -20,7 +19,102 @@ import gspread
 import json
 import tkinter as tk
 
-scouting_sheet_name = '4786-69'
+from tkinter import *
+from tkinter.ttk import *
+from tkinter.filedialog import askopenfile 
+from tkinter.ttk import Progressbar
+
+
+import time
+from PIL import Image
+
+
+
+path ="C:/Users/zidda/.spyder-py3/Programs/Scouting_Neural_Network/Program Directory"
+#we shall store all the file names in this list
+filelist = []
+
+for root, dirs, files in os.walk(path):
+	for file in files:
+        #append the file name to the list
+		filelist.append([os.path.join(root,file)])
+
+namelist = []
+
+#print all the file names
+for name in filelist:
+    strname = str(name)
+    dash = '-'
+    if strname[-9] == '-':
+
+        print(strname[-9])
+        arr_short = strname[-13:-2] # , -11:-4
+        print(arr_short)
+        #print(name[-11])
+        namelist.append(strname[-13:-2])
+
+    
+ws=tk.Tk()
+ws.title(" FEAR Scouting Interface ")
+ws.geometry("315x80")
+instructions = tk.Label(text = " Select file from directory w/o '~'  ->  ")
+instructions.grid(column=0,row=0)
+
+#file_selector = tk.OptionMenu(window,tk.IntVar(),for name in namelist)
+#file_selector.grid(column=1,row=0)
+
+#Define a function to close the window
+def close_win():
+   ws.destroy()
+
+progress_bar = Progressbar(
+    ws, 
+    orient=HORIZONTAL, 
+    length=300, 
+    mode='indeterminate'
+    )
+        
+def open_file():
+    file_path = askopenfile(mode='r', filetypes=[('pls enter jpg only', '*jpg')])
+    print(file_path)
+
+    string_path = str(file_path)
+    print(string_path[-40:-33])
+    progress_bar.start()
+    global scouting_sheet_name
+    scouting_sheet_name = str(string_path[-40:-33])
+    progress_bar.destroy()
+    Label(ws, text='File Uploaded Successfully!', foreground='green').grid(row=4, columnspan=3, pady=10)
+    print(scouting_sheet_name)
+    if file_path is not None:
+        pass
+   
+    
+sheet_upload = Label(
+    ws, 
+    text='Upload scouting sheet scan'
+    )
+sheet_upload.grid(row=0, column=0, padx=10)
+
+choose = Button(
+    ws, 
+    text ='Choose File', 
+    command = lambda:open_file()
+    ) 
+choose.grid(row=0, column=1)
+
+
+
+close = Button(
+    ws, 
+    text='Read Sheet', 
+    command=close_win
+    )
+close.grid(row=3, columnspan=3, pady=10)
+
+ws.mainloop()
+
+
 
 scopes = [
 'https://www.googleapis.com/auth/spreadsheets',
@@ -52,7 +146,8 @@ class ScanNotStraight(Error):
 #newfilename = 'gpsr_model.sav'
 #pickle.dump(mnist, open(file, 'wb'))
 
-  
+#scouting_sheet_name = '4786-69'
+
 
 mnist_load = 'mnist_784'
 mnist = pickle.load(open(mnist_load, 'rb'))
@@ -72,13 +167,11 @@ def img_to_arr(name, return_bool):
 
     imgopen.save(img2)
     imgopen2 = Image.open(img2, mode="r").convert('L')
-
     small_img1 = imgopen2.resize((img_size, img_size))
 
     np_img = np.asarray(small_img1)
     for i in range(len(np_img)):
         for w in range(len(np_img)): 
-            #print(np_img[i, w])
             np_img[i, w] = 255 - np_img[i, w]
     np_arr_1d = np.empty(shape=[1, img_size**2])
 
@@ -109,10 +202,7 @@ def find_sheet(name, return_arr):
     imgopen.save(img2)
     imgopen2 = Image.open(img2, mode="r").convert('L')
     imgopen3 = imgopen2.resize((1691, 1120))
-    #print(disp)
-    #print(np_img.reshape(853, 703))
-    #plt.imshow(np.asarray(imgopen2))
-    #print(np.asarray(imgopen2)[10].sum()/1691)
+
     if not return_arr:
         return imgopen2
     else:
@@ -122,7 +212,6 @@ def cut_top_black(img_name):
     img_arr = find_sheet(img_name, True)
     base = None
     sum_arr = None
-    #print(img_arr[10000, 10])
     
     try:
         for i in range(50):
@@ -145,9 +234,7 @@ def cut_top_black(img_name):
     finally:
         if sum_arr == None:
             print("I have no idea how you even got here. Data analyst moment")
-    #print(img_arr[0].sum()/1691)
-    #print(img_arr) 
-    #plt.imshow(img_arr)
+
     return img_arr
 
 def cut_top_white(img_arr):
@@ -172,8 +259,7 @@ def cut_top_white(img_arr):
     finally:
         if sum_arr == None:
             print("I have no idea how you even got here. Data analyst moment")
-    #print(img_arr[0].sum()/1691)
-    #print(img_arr) 
+
     return img_arr
 
 def cut_left_real(img_arr):
@@ -185,11 +271,7 @@ def cut_left_real(img_arr):
         if img_arr[400, i] < 100:
             base = i
             break
-    """
-    for i in range(1300):
-        for w in range(base):
-            img_arr[i] = np.delete( img_arr[i], 0)
-  """ 
+
     cropped = img_crop(pil_image, base, 0, 1691-base, 1120)
     img_arr = np.asarray(cropped)
     #print(img_arr[0].sum()/1691)
@@ -207,16 +289,7 @@ def straighten_image(cut):
             split_left = np.array_split(ary, 2)[0]
             split_right = np.array_split(ary, 2)[1]
             print(split_left.sum(), " - ", split_right.sum())
-            #for w in range(220, len(cut[i]-1)-200):
-                #print(cut[i, 1140])
 
-    #for i in range(1):
-        #img = Image.fromarray(cut)
-        #imgR = img.rotate(50)
-        #cut = np.asarray(imgR)
-        #img.show()
-
-        
     if split_left.sum() - split_right.sum() > 2500:
         img = Image.fromarray(cut)
         imgR = img.rotate(-1)
@@ -286,41 +359,33 @@ def straighten_image(cut):
             split_right = np.array_split(ary, 2)[1]
         else:
             None
-            
         print(split_left.sum(), " - ", split_right.sum())
 
-    else:
-        
+    else:        
         None
-    img = Image.fromarray(cut)
-    img.show()
-    
+    img = Image.fromarray(cut)    
     cut = np.asarray(img)
     
     return cut
 
 def align_img(img_name):
     cut_top_img = cut_top_black(img_name + '.jpg')
-    
 
     cut_top_white_img = cut_top_white(cut_top_img)
 
     cut_left = cut_left_real(cut_top_white_img)
 
-    #plt.imshow(cut_left)
     return cut_left
 
 X, y = mnist
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2) # splits data into training and testing sets
 
-
 #mlp = MLPClassifier(random_state=2, hidden_layer_sizes=(100,100, 100), solver='adam', max_iter=1500)
 #mlp.fit(X, y) # code to generate new neural network
 
 neural_network = 'scouting_nn_3L_FULL'
 mlp = pickle.load(open(neural_network, 'rb')) # opens neural network file to improve load speeds
-
 
 #file = 'scouting_nn_3L_FULL' 
 #pickle.dump(mlp, open(file, 'wb')) # code to save file of neural network
@@ -329,18 +394,13 @@ def predict(file_name):
     predict = img_to_arr(file_name + '.jpg', True)
     return mlp.predict(predict)
     
-def predict_img(file_name):
-    #predict = img_to_arr(file_name + '.jpg')
-    return mlp.predict(file_name)
-
-
 sheet = find_sheet(scouting_sheet_name + '.jpg', False)
 
 sheet_aligned = align_img(scouting_sheet_name)
 
 sheet_img = Image.fromarray(sheet_aligned)
 
-sheet_img.show()
+#sheet_img.show()
 
 def enhance(img_arr):
     
@@ -350,9 +410,7 @@ def enhance(img_arr):
                 img_arr[i, w] = 0
             else: 
                 img_arr[i, w] = 255
-    #print(img_arr)
     return img_arr
-
             
 def find_num(img_name, x, y, w, h):
     num_crop = img_crop(sheet, x, y, w, h)
@@ -379,36 +437,28 @@ def find_num(img_name, x, y, w, h):
     print(prediction)
     return prediction
 
-
 def read_sheet():
     num_high_left = find_num('num_high', 938, 1034, 80, 70)
     num_high_right = find_num('num_high', 938+80, 1034, 80, 70)
     total_high = (int(num_high_left[0])*10) + int(num_high_right[0])
     
-    
     num_low_left = find_num('num_low', 1115, 1034, 80, 70)
     num_low_right = find_num('num_low', 1115+80, 1034, 80, 70)
     total_low = (int(num_low_left[0])*10) + int(num_low_right[0])
     
-    print(total_high)
-    #print(total_low)
-    
     num_missed_left = find_num('num_missed', 1285, 1034, 80, 70)
     num_missed_right = find_num('num_missed', 1285+80, 1034, 80, 70)
+    total_missed = (int(num_missed_left[0])*10) + int(num_missed_right[0])
+
     
     #rung_reached = find_num('rung_num', 488, 547, 120, 35)
 
+    print(total_high)
+    print(total_low)
+    print(total_missed)
+    
+    scoutingsheet.update_cell(2, 1, total_high) 
+    scoutingsheet.update_cell(2, 2, total_low) 
+    scoutingsheet.update_cell(2, 3, total_missed) 
 
-    scoutingsheet.update_cell(1, 2, total_high) #updates row 2 on column 3
-
-window=tk.Tk()
-window.title(" FEAR Scouting Interface ")
-window.geometry("1000x600")
-newlabel = tk.Label(text = " Visit Pythonista Planet to improve your Python skills ")
-newlabel.grid(column=0,row=0)
-button_name = tk.Button(window, text = "some text")
-button_name.grid(column=1,row=0)
-button_name.bind("<Button-1>", read_sheet()) 
-
-window.mainloop()
-
+read_sheet()
