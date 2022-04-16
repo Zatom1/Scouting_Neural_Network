@@ -12,9 +12,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
-from gsheets import Sheets
 import pandas as pd
 import scipy as sp
+
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+import json
+import tkinter as tk
+
+scouting_sheet_name = '4786-69'
+
+scopes = [
+'https://www.googleapis.com/auth/spreadsheets',
+'https://www.googleapis.com/auth/drive'
+]
+credentials = ServiceAccountCredentials.from_json_keyfile_name("C:/Users/zidda/.spyder-py3/Programs/Scouting_Neural_Network/Google API management/scoutingoutput-a55f2dc8af33.json", scopes) #access the json key you downloaded earlier 
+file = gspread.authorize(credentials) # authenticate the JSON key with gspread
+scoutingsheet = file.open("scouting test") #open sheet
+scoutingsheet = scoutingsheet.sheet1 #replace sheet_name with the name that corresponds to yours, e.g, it can be sheet1
+
 
 # define Python user-defined exceptions
 class Error(Exception):
@@ -23,18 +39,10 @@ class Error(Exception):
 
 
 class ScanNotStraight(Error):
-    """Raised when the input value is too small"""
+    """Raised when a data analyst scans a scouting sheet incorrectly"""
     pass
 
-sheets = Sheets.from_files('client_secrets.json', '~/storage.json')
-url = 'https://docs.google.com/spreadsheets/d/1qfHxtJ34MkHHXY2pvX3mCSq93THfva8_wRYrRD3eD3c/edit#gid=0'
-s = sheets.get(url)
-
-googleSheet = pd.DataFrame(s.sheets[0].values())
-
-googleSheet[3, 5] = 25
-
-print(googleSheet)
+#print(googleSheet)
 
 #from sklearn.datasets import fetch_openml 
 
@@ -82,7 +90,7 @@ def img_to_arr(name, return_bool):
     
     disp = np_img.reshape(img_size, img_size)
     
-    plt.imshow(disp)
+    #plt.imshow(disp)
     #print(np_img.reshape(1, img_size**2))
 
     predicted_img = np_img.reshape(1, img_size**2)
@@ -100,12 +108,7 @@ def find_sheet(name, return_arr):
 
     imgopen.save(img2)
     imgopen2 = Image.open(img2, mode="r").convert('L')
-    crop_img = img_crop(imgopen2, 260, 30, 1180, 1080)
-    reshaped_img = crop_img.resize((850, 700))
-
-    np_img = np.asarray(reshaped_img)
-
-    disp = np_img
+    imgopen3 = imgopen2.resize((1691, 1120))
     #print(disp)
     #print(np_img.reshape(853, 703))
     #plt.imshow(np.asarray(imgopen2))
@@ -113,16 +116,17 @@ def find_sheet(name, return_arr):
     if not return_arr:
         return imgopen2
     else:
-        return np.asarray(imgopen2)
+        return np.asarray(imgopen3)
 
 def cut_top_black(img_name):
     img_arr = find_sheet(img_name, True)
     base = None
     sum_arr = None
     #print(img_arr[10000, 10])
+    
     try:
         for i in range(50):
-            if img_arr[i].sum()/1691 > 230:
+            if img_arr[i].sum()/1691 > 230 and img_arr[i].sum()/1691 < 200 :
                 base = i
                 sum_arr = img_arr[i].sum()/1691
                 
@@ -132,6 +136,9 @@ def cut_top_black(img_name):
                 break
             elif i == 49:
                 raise ScanNotStraight
+            else:
+                sum_arr = 0;
+                break
                 
     except ScanNotStraight:
         print("The scan is not straight enough to be read by the program")
@@ -140,7 +147,7 @@ def cut_top_black(img_name):
             print("I have no idea how you even got here. Data analyst moment")
     #print(img_arr[0].sum()/1691)
     #print(img_arr) 
-    plt.imshow(img_arr)
+    #plt.imshow(img_arr)
     return img_arr
 
 def cut_top_white(img_arr):
@@ -167,7 +174,6 @@ def cut_top_white(img_arr):
             print("I have no idea how you even got here. Data analyst moment")
     #print(img_arr[0].sum()/1691)
     #print(img_arr) 
-    plt.imshow(img_arr)
     return img_arr
 
 def cut_left_real(img_arr):
@@ -187,45 +193,122 @@ def cut_left_real(img_arr):
     cropped = img_crop(pil_image, base, 0, 1691-base, 1120)
     img_arr = np.asarray(cropped)
     #print(img_arr[0].sum()/1691)
-    print(base)
-    plt.imshow(img_arr)
+    #print(base)
     return img_arr
 
-def straighten(cut):
+def straighten_image(cut):
     split_left = None
     split_right = None
     for i in range(20):
-        print(cut[i].sum()/1691)
+        #print(cut[i].sum()/1691)
         if cut[i].sum()/1691 <= 230:
             ary = cut[i].reshape(89, 19)
             plt.imshow(ary)
             split_left = np.array_split(ary, 2)[0]
             split_right = np.array_split(ary, 2)[1]
+            print(split_left.sum(), " - ", split_right.sum())
             #for w in range(220, len(cut[i]-1)-200):
                 #print(cut[i, 1140])
 
-    
-    for i in range(30):
-        if split_left.sum() - split_right.sum() > 1:
-            sp.ndimage.rotate(cut, -1)
-        elif split_left.sum() - split_right.sum() < -1:
-            sp.ndimage.rotate(cut, 1)
+    #for i in range(1):
+        #img = Image.fromarray(cut)
+        #imgR = img.rotate(50)
+        #cut = np.asarray(imgR)
+        #img.show()
+
+        
+    if split_left.sum() - split_right.sum() > 2500:
+        img = Image.fromarray(cut)
+        imgR = img.rotate(-1)
+        cut = np.asarray(imgR)
+        print("-1")
+        
+        if cut[0].sum()/1691 <= 230:
+            ary = cut[i].reshape(89, 19)
+            #plt.imshow(ary)
+            split_left = np.array_split(ary, 2)[0]
+            split_right = np.array_split(ary, 2)[1]
         else:
-            break
+            None
+        
+        print(split_left.sum(), " - ", split_right.sum())
+
+    elif split_left.sum() - split_right.sum() < -2500:
+        img = Image.fromarray(cut)
+        imgR = img.rotate(1)
+        cut = np.asarray(imgR)            
+        print("1")
+            
+        if cut[0].sum()/1691 <= 230:
+            ary = cut[i].reshape(89, 19)
+            #plt.imshow(ary)
+            split_left = np.array_split(ary, 2)[0]
+            split_right = np.array_split(ary, 2)[1]
+        else:
+            None
+            
+        print(split_left.sum(), " - ", split_right.sum())
+
+    else:
+        None
+        
+    ary = cut[0].reshape(89, 19)
+    #plt.imshow(ary)
+    split_left = np.array_split(ary, 2)[0]
+    split_right = np.array_split(ary, 2)[1]
+        
+    if split_left.sum() - split_right.sum() > 2500:
+        img = Image.fromarray(cut)
+        imgR = img.rotate(-1)
+        cut = np.asarray(imgR)
+        print("-1")
+        
+        if cut[0].sum()/1691 <= 230:
+            ary = cut[i].reshape(89, 19)
+            #plt.imshow(ary)
+            split_left = np.array_split(ary, 2)[0]
+            split_right = np.array_split(ary, 2)[1]
+        else:
+            None
+        
+        print(split_left.sum(), " - ", split_right.sum())
+
+    elif split_left.sum() - split_right.sum() < -2500:
+        img = Image.fromarray(cut)
+        imgR = img.rotate(1)
+        cut = np.asarray(imgR)            
+        print("1")
+            
+        if cut[0].sum()/1691 <= 230:
+            ary = cut[i].reshape(89, 19)
+            #plt.imshow(ary)
+            split_left = np.array_split(ary, 2)[0]
+            split_right = np.array_split(ary, 2)[1]
+        else:
+            None
+            
+        print(split_left.sum(), " - ", split_right.sum())
+
+    else:
+        
+        None
+    img = Image.fromarray(cut)
+    img.show()
+    
+    cut = np.asarray(img)
+    
     return cut
 
 def align_img(img_name):
     cut_top_img = cut_top_black(img_name + '.jpg')
+    
 
     cut_top_white_img = cut_top_white(cut_top_img)
-    
-    straight_img = straighten(cut_top_white_img)
-    
-    cut_left = cut_left_real(straight_img)
 
-    plt.imshow(cut_left)
+    cut_left = cut_left_real(cut_top_white_img)
 
-align_img('4786-64')
+    #plt.imshow(cut_left)
+    return cut_left
 
 X, y = mnist
 
@@ -250,130 +333,82 @@ def predict_img(file_name):
     #predict = img_to_arr(file_name + '.jpg')
     return mlp.predict(file_name)
 
-"""
-#X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)
 
+sheet = find_sheet(scouting_sheet_name + '.jpg', False)
 
-y_pred = mlp.predict(X_test)
-incorrect = X_test[y_pred != y_test]
-incorrect_true = y_test[y_pred != y_test]
-incorrect_pred = y_pred[y_pred != y_test]
+sheet_aligned = align_img(scouting_sheet_name)
 
-for j in range(len(incorrect)):
+sheet_img = Image.fromarray(sheet_aligned)
 
-    plt.matshow(incorrect[j].reshape(8, 8), cmap=plt.cm.gray)
-    plt.xticks(())
-    plt.yticks(())
-    plt.show()
-
-    print("true value:", incorrect_true[j])
-    print("predicted value:", incorrect_pred[j])
-"""
-
-# above code checks and displays incorrect guesses
-
-#print(mlp.score(X_test, y_test))
-#print(disp)
-
-sheet = find_sheet('4786-64.jpg', False)
-
-sheet.show() 
+sheet_img.show()
 
 def enhance(img_arr):
     
     for i in range(img_size):
         for w in range(img_size):
-            if img_arr[i, w] > 60:
+            if img_arr[i, w] > 66:
                 img_arr[i, w] = 0
             else: 
                 img_arr[i, w] = 255
-    print(img_arr)
+    #print(img_arr)
     return img_arr
-
 
             
 def find_num(img_name, x, y, w, h):
     num_crop = img_crop(sheet, x, y, w, h)
     num_crop.save(img_name + '.jpg')
-
+    
     num_arr = img_to_arr(img_name + '.jpg', False)
     enhance(num_arr)
+    
+    reshape_num_arr = num_arr.reshape((28, 28))
+    for i in range(img_size):
+        if reshape_num_arr[i].sum() == 0 and i > img_size/2:
+            num_crop = img_crop(sheet, x, y-i, w, h)
+        elif reshape_num_arr[i].sum() == 0 and i <= img_size/2:
+            num_crop = img_crop(sheet, x, y+i, w, h)
+    
+    num_crop.save(img_name + '.jpg')
+    num_arr = img_to_arr(img_name + '.jpg', False)
+    enhance(num_arr)
+
     image = Image.fromarray(num_arr)
     image.save(img_name + '.jpg')
-    
+    plt.imshow(num_arr)
     prediction = predict(img_name)
     print(prediction)
     return prediction
+
+
+def read_sheet():
+    num_high_left = find_num('num_high', 938, 1034, 80, 70)
+    num_high_right = find_num('num_high', 938+80, 1034, 80, 70)
+    total_high = (int(num_high_left[0])*10) + int(num_high_right[0])
     
-"""
-num_missed_crop = img_crop(sheet, 730, 640, 110, 60)
-num_missed_crop.save('num_missed.jpg')
-num_missed_arr = img_to_arr('num_missed.jpg')
-
-num_low_crop = img_crop(sheet, 610, 640, 112, 55)
-num_low_crop.save('num_low.jpg')
-num_low_arr = img_to_arr('num_low.jpg')
-
-num_missed = predict('num_missed')
-num_low = predict('num_low')
-
-
-
-#print(predict('six'))
-
-print(num_missed, num_low)
-"""
-"""
-y_pred = mlp.predict(X_test)
-incorrect = X_test[y_pred != y_test]
-incorrect_true = y_test[y_pred != y_test]
-incorrect_pred = y_pred[y_pred != y_test]
+    
+    num_low_left = find_num('num_low', 1115, 1034, 80, 70)
+    num_low_right = find_num('num_low', 1115+80, 1034, 80, 70)
+    total_low = (int(num_low_left[0])*10) + int(num_low_right[0])
+    
+    print(total_high)
+    #print(total_low)
+    
+    num_missed_left = find_num('num_missed', 1285, 1034, 80, 70)
+    num_missed_right = find_num('num_missed', 1285+80, 1034, 80, 70)
+    
+    #rung_reached = find_num('rung_num', 488, 547, 120, 35)
 
 
-#plt.show()
+    scoutingsheet.update_cell(1, 2, total_high) #updates row 2 on column 3
 
-#small_img.show()
+window=tk.Tk()
+window.title(" FEAR Scouting Interface ")
+window.geometry("1000x600")
+newlabel = tk.Label(text = " Visit Pythonista Planet to improve your Python skills ")
+newlabel.grid(column=0,row=0)
+button_name = tk.Button(window, text = "some text")
+button_name.grid(column=1,row=0)
+button_name.bind("<Button-1>", read_sheet()) 
 
-#x = X_train[1]
-
-for j in range(len(incorrect)):
-
-    plt.matshow(incorrect[j].reshape(img_size, img_size), cmap=plt.cm.gray)
-    plt.xticks(())
-    plt.yticks(())
-    plt.show()
-
-    print("true value:", incorrect_true[j])
-    print("predicted value:", incorrect_pred[j])
-"""
-
-num_high_left = find_num('num_high', 938, 1034, 80, 70)
-
-num_high_right = find_num('num_high', 938+80, 1034, 80, 70)
-
-total_high = (int(num_high_left[0])*10) + int(num_high_right[0])
-
-print(total_high)
-
-#num_low = find_num('num_low', 1115, 1034, 160, 70)
-
-#num_missed = find_num('num_missed', 740, 650, 110, 45)
-
-#rung_reached = find_num('rung_num', 488, 547, 120, 35)
-
-#googleSheet.update("A1", num_missed)
-
-
-#pickle.dump(num_missed_crop, open('num_missed_crop.jpg', 'w')) # code to save file of neural network
-
-#with open(num_missed_crop) as f:
- #   print(f)
-
-#plt.imshow(num_missed_crop)
-# 1, 2, 3, 5, 6, 7, 8, 9
-#plt.imshow()
-
-
-
-
+window.mainloop()
 
